@@ -1,0 +1,82 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage[english]{babel}
+\usepackage{amsthm}
+\usepackage[a4paper, portrait, margin=1in]{geometry}
+\title{\textbf{CSE 250B: Machine Learning, Homework 1}}
+\author{Shriram Chengavalli Kumar, PID A53221613}
+%\date{10/12/16}
+\begin{document}
+\maketitle
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
+
+
+\section{Gist (Details included in section 5)}
+Prototype selection is treated from a generative perspective here. A form for $p(X \mid y,S)$ is assumed ($S$ is the set of prototypes, $X$ denotes the features and $y$ the labels) where the probability of each point depends only on its nearest neighbor having the same label. Using this assumption, we maximize $f(S) = log\big\lbrack p(S \mid X,y) \big\rbrack$ to find the set S of prototypes. Although this is a combinatorial optimization problem, we observe that $f(S)$ is a submodular, monotone function. For this class of functions, approximate greedy inference has been both practically and theoretically shown to be a close approximation and hence we use a greedy algorithm to maximize S.
+
+\section{Experiments and Results}
+Experiments are performed where $50,100,200,500,1000,5000,10000$ prototypes are selected using both the random method and the proposed method. The resulting 1NN classifiers are evaluated using two measure, accuracy and macro F score. The performance metrics of both methods are plotted vs the number of prototypes. For the randomized method, we plot the $97\%$ confidence interval as well. \\
+
+\begin{figure}
+\includegraphics[width=0.5\linewidth]{AccuracyComparison.pdf}
+\includegraphics[width=0.5\linewidth]{FscoreComparison.pdf}
+  
+\caption{Performance graphs comparing the two methods in terms of Accuracy and macro F score}
+\label{fig:performanceGraphs}
+\end{figure}
+
+\section{Evaluation}
+\begin{itemize}
+\item The proposed method outperforms random selection in terms of both measures in the regime of small number of prototypes.
+\item The performance improvement falls off as the number of prototypes selected is increased.\\
+This can be explained by the fact that random selection of prototypes inherently forms a model of the input distribution. As more prototypes are selected, they approximate the true input distribution better. This means that the nearest neighbor of a point generated from the true distribution is more likely to be of the same label. Our method although it selects prototypes intelligently, can only do as well as the true underlying distribution and hence both results converge as the number of points goes up. 
+\end{itemize}
+
+\section{Future Directions}
+
+From this study, I believe that significant performance improvements over random prototype selection can be observed in the cases where a small number of prototypes need to be selected (relative to the complexity of the input distribution). It is known in general that by solving an inherently simpler problem, discriminative classifiers can be estimated on smaller samples. So one approach I would like to explore is to include a discriminative component in the cost while retaining some structure that could help optimize it. I have specifically looked so far into submodularity although more general structure can be considered. 
+
+\section{Implementation}
+Two tricks are used to speed up computation.
+\begin{itemize}
+\item The submodularity property is used to perform lazy function evaluation and avoids significant portions of compute in each greedy step. 
+\item Memoization of pairwise distances on disk with a in memory LRU cache is used to avoid re-computation of pairwise distances. 
+\end{itemize}
+%Further details are omitted for brevity.
+
+\section{Detailed description of cost function}
+
+For some subset $S$ of the input examples, let us consider the posterior probability of $S$. 
+\begin{equation}
+p(S \mid X,y) \propto p(X \mid y,S) p(y \mid S) p(S)
+\end{equation}
+
+\begin{equation}
+log\big\lbrack p(S \mid X,y) \big\rbrack = log\big\lbrack p(X \mid y,S)\big\rbrack + log \big\lbrack p(y \mid S) \big\rbrack+log \big\lbrack p(S) \big\rbrack+ c
+\end{equation}
+where c is a constant. We maximize this function assuming a specific form $p(X \mid y,S)$. We assume that the probability of a feature vector is related to the nearest neighbor which has the same label as that feature vector. Specifically, we assume
+
+\begin{equation}
+p(X \mid y,S) = \prod_{i} max_{r\in S_{y_{i}}}e^{\alpha ||x_{i} - r||_{2}^2}
+\end{equation}
+where $S_{y_{i}}$ represents the subset of $S$ with label equal to $y_{i}$. 
+
+Substituting this in and making benign rearrangements, we get the cost function
+
+\begin{equation}
+f(S) = \sum_{i} log  \big\lbrack p(x_{i} \mid y_{i},S)\big\rbrack
+\end{equation}
+
+\begin{equation*}
+\implies f(S) = \sum_{i} \bigg\lbrack -min_{x_{k} \in S_{y_{i}}} \frac{||x_{i} - x_{k}||_{2}^{2}}{n} + \alpha \frac{log \big\lbrack p(y_{i} \mid S) \big\rbrack }{n} \bigg\rbrack -\beta \mid S\mid
+\end{equation*}
+where $\alpha$ and $\beta$ are hyper-parameters and $p(y_{i} \mid S)$ is just the proportion of prototypes of label $y_{i}$ in set $S$. This function can be shown to be submodular. The proof could be done for example by showing that each $p(x_{i} \mid y_{i},S)$ is submodular and hence the sum is submodular. 
+ 
+\end{document}
+
+
